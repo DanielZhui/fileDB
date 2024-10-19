@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"time"
 )
@@ -64,8 +65,11 @@ func isFileExist(fileName string) bool {
 	return false
 }
 
-func (d *DiskStore) initKeyDir(exitingFile string) {
-	file, _ := os.Open(exitingFile)
+func (d *DiskStore) initKeyDir(exitingFile string) error {
+	file, err := os.Open(exitingFile)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
 	defer file.Close()
 	for {
 		header := make([]byte, headerSize)
@@ -74,24 +78,25 @@ func (d *DiskStore) initKeyDir(exitingFile string) {
 			break
 		}
 		if err != nil {
-			break
+			return fmt.Errorf("failed to read header: %w", err)
 		}
 		timestamp, keySize, valueSize := decodeHeader(header)
 		key := make([]byte, keySize)
 		value := make([]byte, valueSize)
 		_, err = io.ReadFull(file, key)
 		if err != nil {
-			break
+			return fmt.Errorf("failed to read key: %w", err)
 		}
 		_, err = io.ReadFull(file, value)
 		if err != nil {
-			break
+			return fmt.Errorf("failed to read value: %w", err)
 		}
 		totalSize := headerSize + keySize + valueSize
 		d.keyInfo[string(key)] = NewKeyEntry(timestamp, uint32(d.position), uint32(totalSize))
 		d.position += int(totalSize)
 		fmt.Printf("loaded key=%s, value=%s\n", key, value)
 	}
+	return nil
 }
 
 func InitDiskStore(fileName string) (*DiskStore, error) {
@@ -108,43 +113,63 @@ func InitDiskStore(fileName string) (*DiskStore, error) {
 	return ds, nil
 }
 
-func (d *DiskStore) Get(key string) string {
+func (d *DiskStore) Get(key string) (string, error) {
 	kInfo, ok := d.keyInfo[key]
 	if !ok {
-		return ""
+		return "", fmt.Errorf("key not found: %s", key)
 	}
-	d.file.Seek(int64(kInfo.position), defaultWhence)
-	data := make([]byte, kInfo.totalSize)
-	_, err := io.ReadFull(d.file, data)
+	_, err := d.file.Seek(int64(kInfo.position), defaultWhence)
 	if err != nil {
-		panic("read error")
+		return "", fmt.Errorf("seek error: %w", err)
+	}
+	data := make([]byte, kInfo.totalSize)
+	_, err = io.ReadFull(d.file, data)
+	if err != nil {
+		return "", fmt.Errorf("read error: %w", err)
 	}
 	_, _, value := decodeKV(data)
-	return value
+	return value, nil
 }
 
-func (d *DiskStore) write(data []byte) {
+func (d *DiskStore) write(data []byte) error {
 	if _, err := d.file.Write(data); err != nil {
-		panic(err)
+		return err
 	}
 	if err := d.file.Sync(); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func (d *DiskStore) Set(key string, value string) {
+func (d *DiskStore) Set(key string, value string) error {
 	timestamp := uint32(time.Now().Unix())
 	size, data := encodeKV(timestamp, key, value)
 	d.write(data)
+	if err := d.write(data); err != nil {
+		return fmt.Errorf("write error: %w", err)
+	}
 	d.keyInfo[key] = NewKeyEntry(timestamp, uint32(d.position), uint32(size))
-	d.position += size
+	return nil
 }
 
 func main() {
 	fmt.Println("Hello, file DB!")
-	ds, _ := InitDiskStore("./test.db")
-	ds.Set("hello", "world")
-	ds.Set("foo", "oro")
-	res := ds.Get("foo")
-	fmt.Println(res)
+	ds, err := InitDiskStore("./test.db")
+	if err != nil {
+		log.Printf("Failed to initialize disk store: %v", err)
+	}
+	err = ds.Set("hello", "world")
+	if err != nil {
+		log.Printf("Failed to set 'hello': %v", err)
+	}
+	err = ds.Set("foo", "oro")
+	if err != nil {
+		log.Printf("Failed to set 'foo': %v", err)
+	}
+	res, err := ds.Get("hello")
+	if err != nil {
+		log.Printf("Failed to get 'hello': %v", err)
+	} else {
+		fmt.Println(res)
+	}
 }

@@ -107,6 +107,7 @@ func InitDiskStore(fileName string) (*DiskStore, error) {
 
 	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
+		file.Close()
 		return nil, err
 	}
 	ds.file = file
@@ -144,12 +145,28 @@ func (d *DiskStore) write(data []byte) error {
 func (d *DiskStore) Set(key string, value string) error {
 	timestamp := uint32(time.Now().Unix())
 	size, data := encodeKV(timestamp, key, value)
-	d.write(data)
 	if err := d.write(data); err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
 	d.keyInfo[key] = NewKeyEntry(timestamp, uint32(d.position), uint32(size))
 	return nil
+}
+
+func (d *DiskStore) Delete(key string) error {
+	if _, ok := d.keyInfo[key]; !ok {
+		return fmt.Errorf("key not found: %s", key)
+	}
+	delete(d.keyInfo, key)
+
+	return nil
+}
+
+func (d *DiskStore) Update() {
+	//
+}
+
+func (d *DiskStore) List() {
+	//
 }
 
 func main() {
@@ -172,4 +189,5 @@ func main() {
 	} else {
 		fmt.Println(res)
 	}
+	ds.Delete("foo")
 }

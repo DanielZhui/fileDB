@@ -156,8 +156,14 @@ func (d *DiskStore) Delete(key string) error {
 	if _, ok := d.keyInfo[key]; !ok {
 		return fmt.Errorf("key not found: %s", key)
 	}
-	delete(d.keyInfo, key)
 
+	timestamp := uint32(time.Now().Unix())
+	_, tombstone := encodeKV(timestamp, key, "")
+	if err := d.write(tombstone); err != nil {
+		return fmt.Errorf("write error %w", err)
+	}
+
+	delete(d.keyInfo, key)
 	return nil
 }
 
@@ -170,6 +176,10 @@ func (d *DiskStore) Update(key string, value string) error {
 
 func (d *DiskStore) List(filePath string) {
 	d.initKeyDir(filePath)
+}
+
+func (d *DiskStore) Close() error {
+	return d.file.Close()
 }
 
 func main() {
@@ -194,6 +204,7 @@ func main() {
 		fmt.Println(res)
 	}
 	ds.Delete("foo")
+	ds.Delete("hello")
 	ds.Update("hello", "world2")
 	ds.List(filePath)
 }

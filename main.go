@@ -161,17 +161,21 @@ func (d *DiskStore) Delete(key string) error {
 	return nil
 }
 
-func (d *DiskStore) Update() {
-	//
+func (d *DiskStore) Update(key string, value string) error {
+	if _, ok := d.keyInfo[key]; !ok {
+		return fmt.Errorf("key not found: %s", key)
+	}
+	return d.Set(key, value)
 }
 
-func (d *DiskStore) List() {
-	//
+func (d *DiskStore) List(filePath string) {
+	d.initKeyDir(filePath)
 }
 
 func main() {
 	fmt.Println("Hello, file DB!")
-	ds, err := InitDiskStore("./test.db")
+	filePath := "./test.db"
+	ds, err := InitDiskStore(filePath)
 	if err != nil {
 		log.Printf("Failed to initialize disk store: %v", err)
 	}
@@ -190,4 +194,6 @@ func main() {
 		fmt.Println(res)
 	}
 	ds.Delete("foo")
+	ds.Update("hello", "world2")
+	ds.List(filePath)
 }

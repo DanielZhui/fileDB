@@ -32,7 +32,7 @@ func TestDeleteKV(t *testing.T) {
 
 	val, _ := ds.Get(k)
 	if val != "" {
-		t.Fatalf("expected error when getting deleted key, got none")
+		t.Fatalf("value should be an empty string")
 	}
 
 	ds.List(testFile)

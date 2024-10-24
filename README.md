@@ -1,89 +1,101 @@
-# fileDB 📁🔑
+# FileDB 📁
 
-fileDB is a lightweight, file-based key-value storage system implemented in Go. It provides a simple interface for storing and retrieving string data using a persistent file storage mechanism. 💾
-
-> refer: https://github.com/avinassh/go-caskdb
+FileDB is a simple key-value store implementation in Go that persists data to disk. It provides basic CRUD operations and is designed for lightweight storage needs. 🚀
 
 ## ✨ Features
 
-- 📂 File-based persistent storage
-- 🔑 Simple key-value operations (Get and Set)
-- 🚀 Efficient data encoding and decoding
-- ⏱️ Automatic timestamp recording for each entry
+- 💾 Persistent storage: Data is stored on disk and can be retrieved across program restarts.
+- 🔄 Basic CRUD operations: Set, Get, Update, and Delete operations are supported.
+- 🗂️ Key directory: Maintains an in-memory index of keys for fast lookups.
+- ➕ Append-only write: New data is appended to the file, improving write performance.
 
 ## 🛠️ Installation
 
-To use fileDB in your Go project, you can clone this repository or import it in your Go module:
+To use FileDB in your Go project, you can install it using `go get`:
 
 ```bash
-go get github.com/DanielZhui/fileDB
+go get github.com/DanielZhui/fileDB@v0.0.1
 ```
 
 ## 🚀 Usage
 
-Here's a quick example of how to use fileDB:
+Here's a basic example of how to use FileDB:
 
 ```go
 package main
 
 import (
-    "fmt"
-    "github.com/DanielZhui/fileDB"
+	"fmt"
+	"log"
+
+	"github.com/DanielZhui/fileDB"
 )
 
 func main() {
-    // Initialize the disk store
-    ds, err := fileDB.InitDiskStore("./test.db")
-    if err != nil {
-        panic(err)
-    }
+	filePath := "./test.db"
+	ds, err := fileDB.InitDiskStore(filePath)
+	if err != nil {
+		log.Fatalf("Failed to initialize disk store: %v", err)
+	}
 
-    // Set some key-value pairs
-    ds.Set("hello", "world")
-    ds.Set("foo", "bar")
+	// Set a key-value pair
+	err = ds.Set("hello", "world")
+	if err != nil {
+		log.Printf("Failed to set 'hello': %v", err)
+	}
 
-    // Retrieve a value
-    value := ds.Get("foo")
-    fmt.Println(value) // Output: bar
+	// Get a value
+	value, err := ds.Get("hello")
+	if err != nil {
+		log.Printf("Failed to get 'hello': %v", err)
+	} else {
+		fmt.Println(value) // Output: world
+	}
+
+	// Update a value
+	err = ds.Update("hello", "new world")
+	if err != nil {
+		log.Printf("Failed to update 'hello': %v", err)
+	}
+
+	// Delete a key
+	err = ds.Delete("hello")
+	if err != nil {
+		log.Printf("Failed to delete 'hello': %v", err)
+	}
+
+	// List all keys (reloads the key directory from the file)
+	ds.List(filePath)
 }
 ```
 
 ## 📚 API
 
-### InitDiskStore(fileName string) (*DiskStore, error)
-
-Initializes a new DiskStore or loads an existing one from the specified file.
-
-### (d *DiskStore) Set(key string, value string)
-
-Stores a key-value pair in the database.
-
-### (d *DiskStore) Get(key string) string
-
-Retrieves the value associated with the given key. Returns an empty string if the key is not found.
+- 🆕 `InitDiskStore(fileName string) (*DiskStore, error)`: Initialize a new DiskStore instance.
+- ✍️ `Set(key string, value string) error`: Set a key-value pair.
+- 🔍 `Get(key string) (string, error)`: Retrieve the value for a given key.
+- 🔄 `Update(key string, value string) error`: Update the value for an existing key.
+- 🗑️ `Delete(key string) error`: Delete a key-value pair.
+- 📋 `List(filePath string)`: Reload the key directory from the file.
 
 ## 🏗️ Data Structure
 
-Each entry in the file is stored in the following format:
+FileDB uses a simple file format to store data:
 
-- Header (12 bytes):
-  - ⏱️ Timestamp (4 bytes)
-  - 📏 Key Size (4 bytes)
-  - 📏 Value Size (4 bytes)
-- 🔑 Key (variable length)
-- 📄 Value (variable length)
+- 📊 Header (12 bytes): timestamp (4 bytes), key size (4 bytes), value size (4 bytes)
+- 🔑 Key: Variable length string
+- 📄 Value: Variable length string
 
-## ⚠️ Limitations and Future Improvements
+## ⚠️ Limitations
 
-- 🔒 Currently not thread-safe
-- 🗑️ No delete or update operations
-- 💾 All key information is stored in memory, which may not be suitable for large datasets
-- 🔐 No data compression or integrity checks
+- 🔒 FileDB is not designed for concurrent access. It's suitable for single-threaded applications or scenarios where external synchronization is applied.
+- 💾 The entire key directory is kept in memory, which may not be suitable for very large datasets.
+- 🗑️ Deleted keys are not removed from the file, potentially leading to file size growth over time.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. 👨‍💻👩‍💻
+Contributions to FileDB are welcome! Please feel free to submit a Pull Request. 😊
 
-## 📄 License
+## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,0 +1,43 @@
+package tests
+
+import (
+	"os"
+	"testing"
+)
+
+func TestDelete(t *testing.T) {
+	filePath := "./test.db"
+	file, err := os.Create(filePath)
+
+	if err != nil {
+		t.Fatalf("Failed to create test file %v", err)
+	}
+	defer file.Close()
+	defer func() {
+		if err := os.Remove(testFile); err != nil {
+			t.Fatal("Failed to delete test file: %v", err)
+		}
+	}()
+
+	ds, err := InitDiskStore(filePath)
+	if err != nil {
+		t.Errorf("Failed to initalize disk store: %v", err)
+	}
+
+	key := "test key"
+	val := "test val"
+	want := ""
+	err = ds.Set("test key", "test val")
+	if err != nil {
+		t.Errorf("Failed to set %v", err)
+	}
+	got, err := ds.Get(key)
+	if err != nil {
+		t.Errorf("Failed to get %s", key)
+	}
+
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+
+}
